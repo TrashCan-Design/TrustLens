@@ -1,37 +1,88 @@
-# TrustLens
+<p align="center">
+  <img src="./trustlens_logo_1776356219500.png" width="128" alt="TrustLens Logo"/>
+</p>
 
-**Real-time website authenticity and trust analysis — SSL, DNS, domain age, safe browsing and more.**
+# 🛡️ TrustLens: High-Assurance Website Authenticity
 
-TrustLens is a Chrome/Edge (Manifest V3) browser extension designed to protect users by analyzing the trustworthiness of websites in real-time. It evaluates multiple factors to generate a comprehensive trust score, letting you know whether a site is safe to browse or potentially malicious.
+**Real-time threat intelligence and authenticity verification for the modern web.**
 
-## Features ✨
-- **Live Connectivity Check:** Ensures the website and its servers are properly reachable.
-- **SSL/TLS Validation:** Checks the security of a domain's certificate.
-- **DNS Analysis:** Validates the domain name mapping for red flags.
-- **Domain Structure & TLD Risk:** Identifies high-risk Top-Level Domains and spoofing attempts.
-- **Domain Age Calculation:** Flags newly-registered, suspicious domains.
-- **Google Safe Browsing Integration:** Verifies against Google's known malicious URLs list.
-- **Dark Mode Dashboard:** A beautiful, intuitive, and modern popup interface to quickly digest risk scores.
-- **Configurable Options:** Access advanced capabilities such as setting API keys and scanning modes.
+TrustLens is a professional-grade browser extension (Manifest V3) designed to dismantle sophisticated phishing, domain impersonation, and malicious site techniques. By combining authoritative DNS verification, SSL/TLS inspection, and cross-referenced identity fingerprints, TrustLens provides a definitive **Trust Score** for every website you visit.
 
-## Installation 🚀
-### Loading Locally for Development
-1. Clone the repository: `git clone https://github.com/Pawan-Punjabi/Trust_Lens.git`
-2. Open Chrome/Edge and navigate to the Extensions page (`chrome://extensions/` or `edge://extensions/`).
-3. Enable **Developer Mode** in the top right corner.
-4. Click **Load unpacked** and select the directory containing the project files.
+---
 
-## Project Structure 📁
-- `manifest.json`: Web Extension manifest (v3).
-- `background.js`: Service worker managing background processes, API requests, and caching.
-- `content.js`: Handles communication with the web pages.
-- `popup.html` / `popup.js` / `popup.css`: User Interface for live extension popup.
-- `options.html` / `options.js` / `options.css`: Settings page for user customizations (e.g., API key config).
-- `utils/`: Core algorithms and utilities performing the specific health/authenticity checks (DNS, TLD checking, SafeBrowsing, Score Engine, etc.).
+## 🚀 Key Pillars of Trust
 
-## Permissions
-- `activeTab`: To analyze the site you are currently visiting.
-- `tabs`: To access information across browsing tabs.
-- `storage`: To save extension options and cached data securely.
-- `webRequest`: Required for intercepting connections to analyze security context.
-- `dns` (optional): Deep-dive domain name resolution inspection.
+### 1. Infrastructure Integrity
+We verify the "plumbing" of the domain to ensure it hasn't been hijacked or misconfigured.
+- **Authoritative DNS/SOA Verification:** Cross-references Start of Authority (SOA) and Name Server (NS) records to detect shadow DNS or hijacking.
+- **SSL/TLS Deep Scan:** Validates certificate chain, CA trust levels, and differentiates between basic DV (Domain Validated) and high-assurance certificates.
+- **DNSSEC & Email Security:** Checks for SPF, DMARC, and MX record sanity to prevent email spoofing vectors.
+
+### 2. Identity & Ownership
+Tracing the digital footprint of the website's operators.
+- **Advanced Impersonation Detection:** Uses a proprietary scoring model to compare site fingerprints against canonical brand data to flag homograph attacks and typosquatting.
+- **RDAP/WHOIS Ownership Tracing:** Analyzes registrant history and cross-references data points to verify organizational legitimacy.
+- **Domain Age Analysis:** Identifies newly registered "burner" domains frequently used in tactical phishing campaigns.
+
+### 3. Behavioral Risk Analysis
+Real-time integration with global threat intelligence.
+- **Google Safe Browsing API:** Instant checks against millions of known malicious URLs.
+- **High-Risk TLD (Top-Level Domain) Scoring:** Dynamically penalizes domains on TLDs known for high abuse rates (e.g., `.top`, `.tk`, `.zip`).
+- **Structure Analysis:** Scans for suspicious subdomain nesting and deceptive pathing.
+
+---
+
+## 🧠 Advanced Score Engine
+
+The TrustLens **Score Engine** uses a weighted multi-pillar model to calculate a real-time rating from **0 to 100**:
+
+| Component | Weight | Key Metrics |
+| :--- | :--- | :--- |
+| **Authoritative Verification** | 20% | SOA/NS matching, Impersonation Confidence |
+| **Identity & Ownership** | 18% | RDAP verification, Cross-source consistency |
+| **DNS & Email Security** | 14% | SPF/DMARC/MX health |
+| **Safe Browsing** | 14% | Google Threat Database status |
+| **SSL Certificate** | 12% | Encryption strength, CA Trust, Cert Type |
+| **Additional Factors** | 22% | Domain Age, TLD Risk, Structural Analysis |
+
+> [!IMPORTANT]
+> **Compounding Penalties:** TrustLens doesn't just add up scores. It detects correlations—like a high-risk TLD combined with a young domain and a basic DV certificate—and applies exponential penalties to reflect the true risk level.
+
+---
+
+## 🛠️ Installation
+
+### Developer / Researcher Mode
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/TrashCan-Design/TrustLens.git
+   ```
+2. **Setup Dependencies:**
+   ```bash
+   npm install
+   ```
+3. **Load in Browser:**
+   - Open Chrome/Edge and go to `chrome://extensions/`.
+   - Enable **Developer Mode**.
+   - Click **Load unpacked** and select the `Trust_Lens` folder.
+
+---
+
+## 📁 Technical Architecture
+
+- **`manifest.json`**: Chrome Extension Manifest V3.
+- **`background.js`**: Core service worker facilitating high-concurrency API requests and caching.
+- **`utils/`**: Specialized modules for DNS, SSL, and Identity verification.
+- **`popup.js/html/css`**: A premium, glassmorphic UI for real-time risk visualization.
+- **`options.js/html/css`**: Centralized configuration for API keys and advanced scan modes.
+
+---
+
+## 🛡️ Privacy & Security
+TrustLens is built with a **Privacy-First** approach. Most scans are performed against public DNS and threat databases. We do not track user browsing history beyond the active analysis required for the Trust Score.
+
+---
+
+<p align="center">
+  Built for <b>Research Methodology</b> • 2026
+</p>
