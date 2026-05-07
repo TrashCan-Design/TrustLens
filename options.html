@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TrustLens — Settings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+
+  <div class="page-root">
+
+    <!-- Header -->
+    <header class="page-header">
+      <div class="header-brand">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span class="brand-name">TrustLens</span>
+        <span class="header-subtitle">Settings</span>
+      </div>
+    </header>
+
+    <main class="page-main">
+
+      <!-- ── Safe Browsing API Key ─────────────────────── -->
+      <section class="settings-section">
+        <div class="section-header">
+          <div class="section-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <div>
+            <h2 class="section-title">Safe Browsing API Key</h2>
+            <p class="section-desc">Required for Google Safe Browsing threat detection module.</p>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="api-key-input">API Key</label>
+          <div class="input-row">
+            <input
+              type="password"
+              id="api-key-input"
+              class="text-input"
+              placeholder="AIza…"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button class="toggle-visibility-btn" id="toggle-key-vis" title="Show/hide key">
+              <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <p class="field-hint">
+            Get a free key at
+            <a href="https://console.cloud.google.com/apis/library/safebrowsing.googleapis.com" target="_blank" class="link">
+              Google Cloud Console
+            </a>
+            → enable "Safe Browsing API" → create credentials.
+          </p>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn-primary" id="save-key-btn">Save Key</button>
+          <button class="btn-ghost" id="clear-key-btn">Remove Key</button>
+        </div>
+        <div class="status-message" id="key-status"></div>
+      </section>
+
+      <hr class="divider" />
+
+      <!-- ── Scan Mode Default ──────────────────────────── -->
+      <section class="settings-section">
+        <div class="section-header">
+          <div class="section-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <div>
+            <h2 class="section-title">Default Scan Mode</h2>
+            <p class="section-desc">Choose which mode runs when you open a new popup.</p>
+          </div>
+        </div>
+
+        <div class="radio-group">
+          <label class="radio-option" id="label-fast">
+            <input type="radio" name="scan-mode" id="mode-fast" value="fast" checked />
+            <div class="radio-card">
+              <div class="radio-check"></div>
+              <div class="radio-info">
+                <span class="radio-title">Fast Mode</span>
+                <span class="radio-hint">TLD · Domain Structure · Age only · &lt;1 second</span>
+              </div>
+              <span class="radio-badge">Default</span>
+            </div>
+          </label>
+
+          <label class="radio-option" id="label-full">
+            <input type="radio" name="scan-mode" id="mode-full" value="full" />
+            <div class="radio-card">
+              <div class="radio-check"></div>
+              <div class="radio-info">
+                <span class="radio-title">Full Scan</span>
+                <span class="radio-hint">All 7 modules · Network calls · 3–8 seconds</span>
+              </div>
+            </div>
+          </label>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn-primary" id="save-mode-btn">Save Preference</button>
+        </div>
+        <div class="status-message" id="mode-status"></div>
+      </section>
+
+      <hr class="divider" />
+
+      <!-- ── Cache Management ───────────────────────────── -->
+      <section class="settings-section">
+        <div class="section-header">
+          <div class="section-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </div>
+          <div>
+            <h2 class="section-title">Scan Cache</h2>
+            <p class="section-desc">TrustLens caches scan results for 5 minutes per domain to avoid redundant network calls.</p>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn-danger" id="clear-cache-btn">Clear All Cached Results</button>
+        </div>
+        <div class="status-message" id="cache-status"></div>
+      </section>
+
+      <hr class="divider" />
+
+      <!-- ── About ──────────────────────────────────────── -->
+      <section class="settings-section settings-about">
+        <div class="about-row">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span class="about-text">TrustLens v1.0.0 · Manifest V3 · Zero telemetry</span>
+        </div>
+        <p class="about-desc">All analysis is performed locally or via public APIs only. No data is sent to any TrustLens server.</p>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="options.js" type="module"></script>
+</body>
+</html>

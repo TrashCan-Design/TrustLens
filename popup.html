@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TrustLens</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════════
+       ONBOARDING OVERLAY
+  ══════════════════════════════════════════════ -->
+  <div id="onboarding-overlay" class="onboarding-overlay hidden">
+    <div class="onboarding-backdrop"></div>
+    <div class="onboarding-card">
+      <div class="onboarding-steps">
+        <div class="onboarding-step active" data-step="1">
+          <div class="ob-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <h3 class="ob-title">Trust Score Ring</h3>
+          <p class="ob-body">The animated ring shows your site's trust score (0–100). <span class="ob-cyan">Cyan</span> = Trusted · <span class="ob-amber">Amber</span> = Caution · <span class="ob-red">Red</span> = Dangerous.</p>
+        </div>
+        <div class="onboarding-step" data-step="2">
+          <div class="ob-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <h3 class="ob-title">Automatic Full Scan</h3>
+          <p class="ob-body">A <strong>full scan</strong> runs automatically on every site visit — SSL, DNS, SPF, DMARC, identity verification, authoritative DNS, impersonation detection and Safe Browsing.</p>
+        </div>
+        <div class="onboarding-step" data-step="3">
+          <div class="ob-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <h3 class="ob-title">Spoof Detection</h3>
+          <p class="ob-body">TrustLens compares your site against <strong>canonical brand domains</strong> using authoritative DNS, SOA, and RDAP to detect impersonation with a confidence score.</p>
+        </div>
+      </div>
+      <div class="ob-dots">
+        <span class="ob-dot active" data-dot="1"></span>
+        <span class="ob-dot" data-dot="2"></span>
+        <span class="ob-dot" data-dot="3"></span>
+      </div>
+      <div class="ob-actions">
+        <button class="ob-btn-skip" id="ob-skip">Skip</button>
+        <button class="ob-btn-next" id="ob-next">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       MAIN POPUP
+  ══════════════════════════════════════════════ -->
+  <div class="popup-root">
+
+    <!-- Header (no fast/full toggle — always full scan) -->
+    <header class="popup-header">
+      <div class="header-brand">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span class="brand-name">TrustLens</span>
+      </div>
+      <div class="header-controls">
+        <span class="scan-mode-pill">Full Scan</span>
+        <a href="options.html" target="_blank" class="icon-btn" title="Settings" id="open-settings">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>
+        </a>
+      </div>
+    </header>
+
+    <!-- Domain pill -->
+    <div class="domain-banner">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      <span id="current-domain" class="domain-text">—</span>
+    </div>
+
+    <!-- ══ IMPERSONATION ALERT ══ -->
+    <div class="impersonation-alert hidden" id="impersonation-alert">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff3b3b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <div class="impersonation-text">
+        <strong>Impersonation Detected</strong>
+        <span id="impersonation-brand"></span>
+      </div>
+    </div>
+
+    <!-- ══ SCORE RING SECTION ══ -->
+    <section class="score-section">
+      <div class="ring-container" id="ring-container">
+        <svg class="score-ring" viewBox="0 0 120 120" id="score-svg">
+          <circle class="ring-track" cx="60" cy="60" r="50" />
+          <circle class="ring-fill" id="ring-fill" cx="60" cy="60" r="50"
+            stroke-dasharray="314"
+            stroke-dashoffset="314"
+            transform="rotate(-90 60 60)" />
+          <circle class="ring-pulse" id="ring-pulse" cx="60" cy="60" r="50" />
+        </svg>
+        <div class="score-center">
+          <span class="score-number" id="score-number">—</span>
+          <span class="score-band" id="score-band">Scanning…</span>
+        </div>
+      </div>
+      <button class="rescan-btn" id="rescan-btn" title="Re-run scan">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Rescan
+      </button>
+    </section>
+
+    <!-- ══ MODULE CARDS ══ -->
+    <section class="cards-section" id="cards-section">
+
+      <!-- Authoritative Verification (new — highest priority) -->
+      <div class="module-card featured" id="card-authoritative" data-module="authoritative">
+        <div class="card-header">
+          <div class="card-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <span class="card-label">Authoritative Verification</span>
+          <div class="card-status" id="status-authoritative">
+            <span class="spinner"></span>
+          </div>
+          <button class="card-toggle" aria-label="Expand">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+        </div>
+        <div class="card-body" id="body-authoritative"></div>
+      </div>
+
+      <!-- Identity & Ownership -->
+      <div class="module-card" id="card-identity" data-module="identity">
+        <div class="card-header">
+          <div class="card-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <span class="card-label">Identity & Ownership</span>
+          <div class="card-status" id="status-identity">
+            <span class="spinner"></span>
+          </div>
+          <button class="card-toggle" aria-label="Expand">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+        </div>
+        <div class="card-body" id="body-identity"></div>
+      </div>
+
+      <!-- SSL Certificate -->
+      <div class="module-card" id="card-ssl" data-module="ssl">
+        <div class="card-header">
+          <div class="card-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+          </div>
+          <span class="card-label">SSL Certificate</span>
+          <div class="card-status" id="status-ssl">
+            <span class="spinner"></span>
+          </div>
+          <button class="card-toggle" aria-label="Expand">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+        </div>
+        <div class="card-body" id="body-ssl"></div>
+      </div>
+
+      <!-- DNS & Email Security -->
+      <div class="module-card" id="card-dns" data-module="dns">
+        <div class="card-header">
+          <div class="card-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+          </div>
+          <span class="card-label">DNS & Email Security</span>
+          <div class="card-status" id="status-dns">
+            <span class="spinner"></span>
+          </div>
+          <button class="card-toggle" aria-label="Expand">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+        </div>
+        <div class="card-body" id="body-dns"></div>
+      </div>
+
+      <!-- Live Check -->
+      <div class="module-card" id="card-live" data-module="live">
+        <div class="card-header">
+          <div class="card-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+          </div>
+          <span class="card-label">Live Check</span>
+          <div class="card-status" id="status-live">
+            <span class="spinner"></span>
+          </div>
+          <button class="card-toggle" aria-label="Expand">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+        </div>
+        <div class="card-body" id="body-live"></div>
+      </div>
+
+      <!-- Domain Structure -->
+      <div class="module-card" id="card-domain" data-module="domain">
+        <div class="card-header">
+          <div class="card-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+          </div>
+          <span class="card-label">Domain Structure</span>
+          <div class="card-status" id="status-domain">
+            <span class="spinner"></span>
+          </div>
+          <button class="card-toggle" aria-label="Expand">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+        </div>
+        <div class="card-body" id="body-domain"></div>
+      </div>
+
+      <!-- TLD Risk -->
+      <div class="module-card" id="card-tld" data-module="tld">
+        <div class="card-header">
+          <div class="card-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+          </div>
+          <span class="card-label">TLD Risk</span>
+          <div class="card-status" id="status-tld">
+            <span class="spinner"></span>
+          </div>
+          <button class="card-toggle" aria-label="Expand">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+        </div>
+        <div class="card-body" id="body-tld"></div>
+      </div>
+
+      <!-- Domain Age -->
+      <div class="module-card" id="card-age" data-module="age">
+        <div class="card-header">
+          <div class="card-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <span class="card-label">Domain Age</span>
+          <div class="card-status" id="status-age">
+            <span class="spinner"></span>
+          </div>
+          <button class="card-toggle" aria-label="Expand">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+        </div>
+        <div class="card-body" id="body-age"></div>
+      </div>
+
+      <!-- CMS Info (hidden by default) -->
+      <div class="module-card hidden" id="card-cms" data-module="cms">
+        <div class="card-header">
+          <div class="card-icon">
+             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </div>
+          <span class="card-label">Site Info (CMS)</span>
+          <div class="card-status" id="status-cms"></div>
+          <button class="card-toggle" aria-label="Expand">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+        </div>
+        <div class="card-body" id="body-cms"></div>
+      </div>
+
+      <!-- Dark Web Detection (hidden by default) -->
+      <div class="module-card hidden alert-card" id="card-darkweb" data-module="darkweb">
+        <div class="card-header">
+          <div class="card-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ff3b3b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <span class="card-label">Dark Web Alert</span>
+          <div class="card-status" id="status-darkweb">FAIL</div>
+        </div>
+        <div class="card-body" id="body-darkweb"></div>
+      </div>
+
+      <!-- ══ EXTERNAL VALIDATION ══ -->
+      <div class="external-section">
+        <div class="external-header">External Source Validation</div>
+        <div class="module-card external" id="card-sb" data-module="sb">
+          <div class="card-header">
+            <div class="card-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </div>
+            <span class="card-label">Google Safe Browsing</span>
+            <div class="card-status" id="status-sb">
+              <span class="spinner"></span>
+            </div>
+            <button class="card-toggle" aria-label="Expand">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+          </div>
+          <div class="card-body" id="body-sb"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Footer -->
+    <footer class="popup-footer">
+      <button class="footer-btn" id="copy-report-btn" title="Copy trust report to clipboard">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copy Report
+      </button>
+      <span class="footer-copy">TrustLens v1.1</span>
+    </footer>
+
+  </div>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

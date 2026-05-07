@@ -1,0 +1,60 @@
+{
+  "manifest_version": 3,
+  "name": "TrustLens",
+  "version": "1.1.0",
+  "description": "Real-time website trust & authenticity analysis — SSL certificates, DNS/SPF/DMARC, domain ownership tracing, TLD risk, safe browsing and more.",
+  "author": "TrustLens",
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "TrustLens — Website Trust Analyzer",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "storage",
+    "webRequest"
+  ],
+
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

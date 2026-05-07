@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+
+# Build / generated files
+dist/
+build/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# VS Code settings (optional)
+.vscode/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Package manager cache
+.npm/
+.cache/
+
+# Coverage reports
+coverage/
+
+# Generated icons (only if auto-generated)
+icons/generated/
+
+# Mac/Linux hidden files
+.*.swp
