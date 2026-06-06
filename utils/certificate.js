@@ -1,12 +1,10 @@
 
 const TRUSTED_CAS = {
-  // Major CAs with Extended Validation capabilities
   tier1: [
     'digicert', 'comodo', 'sectigo', 'globalsign', 'entrust',
     'geotrust', 'thawte', 'symantec', 'verisign', 'godaddy',
     'starfield', 'trustwave', 'cybertrust',
   ],
-  // Well-known free and commercial CAs
   tier2: [
     "let's encrypt", 'letsencrypt', 'r3', 'e1', 'r10', 'r11',
     'isrg root', 'internet security research group',
@@ -14,7 +12,6 @@ const TRUSTED_CAS = {
     'microsoft', 'apple', 'baltimore',
     'ssl.com', 'zerossl', 'buypass',
   ],
-  // lesser-known but legitimate CAs
   tier3: [
     'actalis', 'certigna', 'camerfirma', 'secom',
     'e-tugra', 'turktrust', 'certum', 'certinomis',
@@ -48,18 +45,14 @@ function determineCertType(certDetails) {
   const subject = certDetails?.subject ?? '';
   const issuer = certDetails?.issuer ?? '';
 
-  // EV certificates typically include business registration details
-  // and have specific OID policies
   if (subject.includes('serialNumber=') || subject.includes('businessCategory=')) {
     return 'EV';
   }
 
-  // OV certificates include organization name but not EV-specific fields
   if (subject.includes('O=') || subject.includes('organizationName=')) {
     return 'OV';
   }
 
-  // DV certificates only validate domain ownership
   return 'DV';
 }
 
@@ -71,7 +64,6 @@ export async function checkSSL(tabId, hostname, securityInfo = null) {
     const isHTTPS = url.startsWith('https://');
     const isHTTP  = url.startsWith('http://');
 
-    // If no detailed cert info from background, use protocol only
     if (!securityInfo) {
       if (!isHTTPS && !isHTTP) {
         return {
@@ -91,7 +83,6 @@ export async function checkSSL(tabId, hostname, securityInfo = null) {
         };
       }
 
-      // Attempt to determine cert info via the hostname and known patterns
       return {
         status: 'pass',
         label: 'SSL Certificate',
@@ -143,7 +134,6 @@ export async function checkSSL(tabId, hostname, securityInfo = null) {
       issues.push(`Certificate issued by unrecognized CA: "${issuer}"`);
     }
 
-    // Certificate type assessment
     if (certType === 'EV') {
       positives.push('Extended Validation (EV) — highest trust level, organization identity verified');
     } else if (certType === 'OV') {
@@ -191,7 +181,7 @@ export async function checkSSL(tabId, hostname, securityInfo = null) {
       validFrom = start.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
       certAgeInDays = Math.floor((new Date() - start) / (1000 * 60 * 60 * 24));
 
-      // Very new certificate on an established-looking domain is suspicious
+      // Fresh cert can indicate a newly set-up fraudulent site
       if (certAgeInDays < 7) {
         issues.push('Certificate was issued very recently (< 7 days) — could indicate a newly compromised or fraudulent site');
       }
@@ -250,56 +240,38 @@ export async function checkSSL(tabId, hostname, securityInfo = null) {
 
 
 const BRAND_NAMES = new Set([
-  // Big tech
   'paypal', 'google', 'facebook', 'apple', 'amazon', 'microsoft',
   'netflix', 'instagram', 'twitter', 'linkedin', 'whatsapp', 'youtube',
   'gmail', 'outlook', 'office365', 'dropbox', 'icloud', 'tiktok',
   'snapchat', 'telegram', 'discord', 'slack', 'zoom', 'teams',
   'spotify', 'twitch', 'reddit', 'pinterest', 'tumblr',
-  // Banking & Finance
   'bankofamerica', 'chase', 'wellsfargo', 'citibank', 'barclays',
   'hsbc', 'sbi', 'hdfc', 'icici', 'paytm', 'phonepe', 'gpay',
   'jpmorgan', 'goldmansachs', 'morganstanley', 'deutschebank',
   'ubs', 'creditsuisse', 'santander', 'ing', 'bnpparibas',
   'standardchartered', 'rbs', 'natwest', 'lloyds', 'halifax',
   'nationwide', 'capitalone', 'discover', 'amex', 'americanexpress',
-  // Payment & Crypto
   'ebay', 'shopify', 'stripe', 'square', 'venmo', 'cashapp',
   'coinbase', 'binance', 'crypto', 'kraken', 'blockchain',
   'metamask', 'trustwallet', 'opensea',
-  // eCommerce
   'walmart', 'target', 'bestbuy', 'costco', 'alibaba', 'aliexpress',
   'wish', 'etsy', 'wayfair',
-  // Governments / Institutions
   'irs', 'usps', 'fedex', 'ups', 'dhl',
-  // Security / Auth
   'norton', 'mcafee', 'kaspersky', 'avast', 'bitdefender',
   'lastpass', '1password', 'dashlane', 'okta', 'auth0',
 ]);
 
-/**
- * Known second-level domains for multi-part TLD extraction.
- */
 const KNOWN_SLDS = new Set([
   'co', 'com', 'org', 'net', 'gov', 'edu', 'ac', 'mil',
   'or', 'ne', 'go', 'gob', 'nic', 'res', 'nhs', 'police', 'govt',
 ]);
 
-/**
- * Check if a string contains non-ASCII (homograph / IDN spoofing) characters.
- * @param {string} str
- * @returns {boolean}
- */
+// Checks for homograph / IDN characters
 function hasNonASCII(str) {
   // eslint-disable-next-line no-control-regex
   return /[^\x00-\x7F]/.test(str);
 }
 
-/**
- * Detect mixed-script attacks (e.g., mixing Latin and Cyrillic).
- * @param {string} str
- * @returns {{ mixed: boolean, scripts: string[] }}
- */
 function detectMixedScripts(str) {
   const scripts = new Set();
   for (const char of str) {
@@ -316,12 +288,6 @@ function detectMixedScripts(str) {
   return { mixed: scripts.size > 1, scripts: [...scripts] };
 }
 
-/**
- * Extract registrable domain (apex) from a hostname.
- * Handles multi-part TLDs correctly.
- * @param {string[]} parts - hostname split by '.'
- * @returns {string}
- */
 function getApexDomain(parts) {
   if (parts.length >= 3 &&
       KNOWN_SLDS.has(parts[parts.length - 2]) &&
@@ -331,40 +297,27 @@ function getApexDomain(parts) {
   return parts.slice(-2).join('.');
 }
 
-/**
- * Check if hostname is an IP address (v4 or v6).
- * @param {string} hostname
- * @returns {boolean}
- */
 function isIPAddress(hostname) {
-  // IPv4
   if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) return true;
-  // IPv6
   if (hostname.includes(':') && /^[0-9a-f:]+$/i.test(hostname)) return true;
-  // IPv6 in brackets
   if (hostname.startsWith('[') && hostname.endsWith(']')) return true;
   return false;
 }
 
-/**
- * Detect common typosquatting patterns against brand names.
- * @param {string} domain - the full domain without TLD
- * @returns {{ detected: boolean, brand: string, technique: string }}
- */
 function detectTyposquatting(domain) {
   const lower = domain.toLowerCase();
 
-  // Common character substitutions
+
   const substitutions = {
     '0': 'o', '1': 'l', '3': 'e', '4': 'a', '5': 's',
     '@': 'a', '$': 's', '!': 'i',
   };
 
-  // Check against brand names
+
   for (const brand of BRAND_NAMES) {
     if (lower === brand) continue; // Exact match is fine
 
-    // 1. Character omission (e.g., "gogle" for "google")
+
     if (brand.length > 3 && lower.length === brand.length - 1) {
       let mismatches = 0;
       let bi = 0;
@@ -380,7 +333,7 @@ function detectTyposquatting(domain) {
       }
     }
 
-    // 2. Character swap (e.g., "googel" for "google")
+
     if (lower.length === brand.length) {
       let diffs = 0;
       for (let i = 0; i < lower.length; i++) {
@@ -391,7 +344,7 @@ function detectTyposquatting(domain) {
       }
     }
 
-    // 3. Character doubling (e.g., "gooogle" for "google")
+
     if (lower.length === brand.length + 1) {
       const deduped = lower.replace(/(.)\1+/g, '$1');
       if (deduped === brand || deduped === brand.replace(/(.)\1+/g, '$1')) {
@@ -399,7 +352,7 @@ function detectTyposquatting(domain) {
       }
     }
 
-    // 4. Hyphenation (e.g., "pay-pal" for "paypal")
+
     if (lower.replace(/-/g, '') === brand) {
       return { detected: true, brand, technique: 'hyphenation' };
     }
@@ -408,17 +361,11 @@ function detectTyposquatting(domain) {
   return { detected: false, brand: '', technique: '' };
 }
 
-/**
- * Enhanced domain/subdomain structure analysis.
- * @param {string} hostname - e.g. "secure.paypal.com.hacker.net"
- * @returns {Promise<{ status, label, detail, raw }>}
- */
 export async function checkDomainStructure(hostname) {
   const parts = hostname.toLowerCase().split('.');
   const issues = [];
   const flags = {};
 
-  // ── Check 0: IP Address ───────────────────────────────────────────────
   if (isIPAddress(hostname)) {
     return {
       status: 'warn',
@@ -433,12 +380,11 @@ export async function checkDomainStructure(hostname) {
   const subdomainDepth = subdomainParts.length;
   const fullSubdomain = subdomainParts.join('.');
 
-  // ── Check 1: Non-ASCII / Homograph characters ─────────────────────────
   if (hasNonASCII(hostname)) {
     issues.push('Non-ASCII characters detected — possible homograph/IDN spoofing attack');
     flags.homograph = true;
 
-    // Check for mixed scripts (e.g., Latin + Cyrillic)
+
     const scriptAnalysis = detectMixedScripts(hostname);
     if (scriptAnalysis.mixed) {
       issues.push(`Mixed scripts detected: ${scriptAnalysis.scripts.join(' + ')} — strong phishing indicator`);
@@ -446,22 +392,19 @@ export async function checkDomainStructure(hostname) {
     }
   }
 
-  // ── Check 2: Punycode detection ───────────────────────────────────────
   if (hostname.includes('xn--')) {
     issues.push('Punycode (internationalized) domain detected — verify the actual displayed characters');
     flags.punycode = true;
   }
 
-  // ── Check 3: Excessive subdomain depth ────────────────────────────────
   if (subdomainDepth > 3) {
     issues.push(`Unusually deep subdomain nesting (${subdomainDepth} levels) — typical of URL padding attacks`);
     flags.deepNesting = true;
   } else if (subdomainDepth > 2) {
-    // Moderate nesting — not always bad but worth noting
+
     flags.moderateNesting = true;
   }
 
-  // ── Check 4: Brand name embedded in subdomain ─────────────────────────
   const embeddedBrands = subdomainParts.filter(part => BRAND_NAMES.has(part));
   if (embeddedBrands.length > 0) {
     const apexRoot = apex.split('.')[0];
@@ -472,7 +415,6 @@ export async function checkDomainStructure(hostname) {
     }
   }
 
-  // ── Check 5: Brand in the apex domain itself (typosquatting) ──────────
   const apexRoot = apex.split('.')[0];
   const typosquat = detectTyposquatting(apexRoot);
   if (typosquat.detected) {
@@ -480,7 +422,6 @@ export async function checkDomainStructure(hostname) {
     flags.typosquatting = true;
   }
 
-  // ── Check 6: Suspicious subdomain patterns ────────────────────────────
   const suspiciousPatterns = [
     { pattern: /^(secure|login|signin|verify|account|update|confirm|validation|auth)$/, label: 'auth-keyword' },
     { pattern: /^(bank|payment|billing|invoice|wallet|money|transfer)$/, label: 'financial-keyword' },
@@ -490,33 +431,28 @@ export async function checkDomainStructure(hostname) {
   for (const sub of subdomainParts) {
     for (const { pattern, label } of suspiciousPatterns) {
       if (pattern.test(sub)) {
-        // Only suspicious if combined with other flags
+
         flags[`suspiciousSub_${label}`] = sub;
       }
     }
   }
 
-  // ── Check 7: Hyphen abuse ─────────────────────────────────────────────
-  // Excessive hyphens are common in phishing domains
   const hyphenCount = hostname.split('-').length - 1;
   if (hyphenCount > 3) {
     issues.push(`Excessive use of hyphens (${hyphenCount}) — common in phishing domains`);
     flags.hyphenAbuse = true;
   }
 
-  // ── Check 8: Very long hostname ───────────────────────────────────────
   if (hostname.length > 60) {
     issues.push(`Unusually long hostname (${hostname.length} chars) — may be used to hide the true domain`);
     flags.longHostname = true;
   }
 
-  // ── Check 9: Numeric-heavy subdomains ─────────────────────────────────
   const numericSubs = subdomainParts.filter(p => /^\d+$/.test(p));
   if (numericSubs.length > 0 && subdomainDepth > 1) {
     flags.numericSubdomains = true;
   }
 
-  // ── Build result ──────────────────────────────────────────────────────
   let status, detail;
 
   if (flags.homograph || flags.brandSpoofing || flags.mixedScripts) {

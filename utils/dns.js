@@ -31,13 +31,12 @@ function parseSPF(txtRecords) {
   const parts = spfRecord.split(/\s+/);
   const mechanisms = parts.filter(p => p !== 'v=spf1');
 
-  // Determine the SPF policy (all, ~all, -all, ?all)
   let policy = 'neutral';
   const allMech = mechanisms.find(m => m.endsWith('all'));
   if (allMech) {
-    if (allMech === '-all') policy = 'hard-fail';     // Strict: reject unauthorized senders
-    else if (allMech === '~all') policy = 'soft-fail'; // Mark as suspicious
-    else if (allMech === '+all') policy = 'pass-all';  // Dangerous: allows anyone
+    if (allMech === '-all') policy = 'hard-fail';
+    else if (allMech === '~all') policy = 'soft-fail';
+    else if (allMech === '+all') policy = 'pass-all';
     else if (allMech === '?all') policy = 'neutral';
   }
 
@@ -58,17 +57,16 @@ function parseDMARC(txtRecords) {
   return {
     found: true,
     record: dmarcRecord,
-    policy: tags.p || 'none',           // none, quarantine, reject
+    policy: tags.p || 'none',
     subPolicy: tags.sp || tags.p || 'none',
-    rua: tags.rua || '',                // Aggregate report URI
-    ruf: tags.ruf || '',                // Forensic report URI
-    pct: parseInt(tags.pct) || 100,     // Percentage of messages subject to filtering
+    rua: tags.rua || '',
+    ruf: tags.ruf || '',
+    pct: parseInt(tags.pct) || 100,
   };
 }
 
 
 export async function checkDNS(hostname) {
-  // Run ALL DNS queries in parallel for speed
   const [aData, mxData, nsData, txtData, dmarcData, aaaaData, caaData] = await Promise.all([
     queryDNS(hostname, 'A'),
     queryDNS(hostname, 'MX'),
@@ -118,7 +116,6 @@ export async function checkDNS(hostname) {
     issues.push('No MX records — no mail infrastructure');
   }
 
-  // SPF
   if (spf.found) {
     if (spf.policy === 'pass-all') {
       issues.push('SPF allows ALL senders (+all) — dangerous configuration');
@@ -133,7 +130,6 @@ export async function checkDNS(hostname) {
     issues.push('No SPF record — email sender not authenticated');
   }
 
-  // DMARC
   if (dmarc.found) {
     if (dmarc.policy === 'reject') {
       passes.push('DMARC: reject policy (strongest)');
@@ -148,17 +144,14 @@ export async function checkDNS(hostname) {
     issues.push('No DMARC record — email domain not protected against spoofing');
   }
 
-  // NS Records
   if (nameservers.length > 0) {
     passes.push(`NS: ${nameservers.length} nameserver(s)`);
   }
 
-  // DNSSEC
   if (dnssecValidated) {
     passes.push('DNSSEC validated');
   }
 
-  // CAA
   if (caaEntries.length > 0) {
     passes.push(`CAA: ${caaEntries.length} rule(s) — restricts which CAs can issue certificates`);
   }
@@ -169,7 +162,6 @@ export async function checkDNS(hostname) {
     status = 'fail';
     detail = 'DNS returned no A records — the domain does not resolve to any IP address.';
   } else if (issues.length > 2) {
-    // Multiple email security issues
     status = 'warn';
     detail = `${passes.join(' · ')}. Issues: ${issues.join(' · ')}`;
   } else {

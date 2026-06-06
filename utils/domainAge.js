@@ -19,7 +19,6 @@ async function fetchRDAP(url) {
 function extractRegistrationDate(data) {
   if (!data?.events) return null;
 
-  // RDAP events have an eventAction and eventDate field
   const regEvent = data.events.find(
     e => e.eventAction === 'registration' || e.eventAction === 'Registration'
   );
@@ -52,14 +51,11 @@ export async function checkDomainAge(hostname) {
   const parts = hostname.split('.');
   const domain = parts.length >= 2 ? parts.slice(-2).join('.') : hostname;
 
-  // Try primary RDAP source first fallback
   const primaryUrl = `https://rdap.org/domain/${encodeURIComponent(domain)}`;
   const fallbackUrl = `https://rdap.verisign.com/com/v1/domain/${encodeURIComponent(domain)}`;
 
-  // Try primary first
   let data = await fetchRDAP(primaryUrl);
 
-  // If primary failed or returned no events
   if (!data || !data.events) {
     data = await fetchRDAP(fallbackUrl);
   }
@@ -83,15 +79,12 @@ export async function checkDomainAge(hostname) {
   let status, detail;
 
   if (days < 30) {
-    // Extremely fresh
     status = 'fail';
     detail = `Registered ${formattedDate} — only ${ageLabel}. Domains this new carry high phishing risk.`;
   } else if (days < 180) {
-    // Recently registered 
     status = 'warn';
     detail = `Registered ${formattedDate} (${ageLabel}). Recently registered domains are more likely to be malicious.`;
   } else {
-    // Established domain
     status = 'pass';
     detail = `Registered ${formattedDate} (${ageLabel}). Established domain with reasonable history.`;
   }

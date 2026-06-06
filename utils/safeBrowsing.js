@@ -8,7 +8,6 @@ function buildRequestBody(url) {
       clientVersion: '1.0.0',
     },
     threatInfo: {
-      // All major threat types
       threatTypes: [
         'MALWARE',
         'SOCIAL_ENGINEERING',
@@ -24,8 +23,6 @@ function buildRequestBody(url) {
 
 
 export async function checkSafeBrowsing(url) {
-  // Check for API key
-  // Key is stored by the user 
   let apiKey;
   try {
     const stored = await chrome.storage.sync.get('safeBrowsingKey');
@@ -35,7 +32,6 @@ export async function checkSafeBrowsing(url) {
   }
 
   if (!apiKey || apiKey.trim() === '') {
-    // No key: skip this module 
     return {
       status: 'skip',
       label: 'Safe Browsing',
@@ -44,7 +40,6 @@ export async function checkSafeBrowsing(url) {
     };
   }
 
-  // Perform API request
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -59,7 +54,6 @@ export async function checkSafeBrowsing(url) {
     clearTimeout(timer);
 
     if (!res.ok) {
-      // API error (e.g., invalid key, quota exceeded)
       const errText = await res.text().catch(() => res.status.toString());
       return {
         status: 'warn',
@@ -71,8 +65,6 @@ export async function checkSafeBrowsing(url) {
 
     const data = await res.json();
 
-    // Interpret response 
-    // An empty response body {} means the URL is clean 
     if (!data.matches || data.matches.length === 0) {
       return {
         status: 'pass',
@@ -82,7 +74,6 @@ export async function checkSafeBrowsing(url) {
       };
     }
 
-    // Threat detected 
     const threatTypes = [...new Set(data.matches.map(m => m.threatType))];
     const threatStr = threatTypes.join(', ').replace(/_/g, ' ').toLowerCase();
 

@@ -11,13 +11,11 @@ const WEIGHTS = {
 
 
 export function computeScore(results) {
-  let earned = 0;
+  let earned   = 0;
   let possible = 0;
   const breakdown = [];
 
-  // Correlation Logic
-
-  // TLD fail + Age check
+  // Cross-module escalations: combine weak signals into stronger verdicts
   if (results.tld?.status === 'fail') {
     if (results.age?.status === 'fail' || results.age?.status === 'warn') {
       if (results.domain?.status === 'pass') {
@@ -28,7 +26,6 @@ export function computeScore(results) {
         };
       }
     }
-    // TLD fail + identity screwupp
     if (results.identity?.status === 'warn') {
       results.identity = {
         ...results.identity,
@@ -38,7 +35,6 @@ export function computeScore(results) {
     }
   }
 
-  // Domain structure warn + TLD fail 
   if (results.domain?.status === 'warn' && results.tld?.status === 'fail') {
     results.domain = {
       ...results.domain,
@@ -47,7 +43,6 @@ export function computeScore(results) {
     };
   }
 
-  // SSL fail + Identity fail
   if (results.ssl?.status === 'fail' && results.identity?.status === 'fail') {
     results.identity = {
       ...results.identity,
@@ -55,7 +50,6 @@ export function computeScore(results) {
     };
   }
 
-  // DNS fail + weak identity
   if (results.dns?.status === 'fail' && results.identity?.status === 'warn') {
     results.identity = {
       ...results.identity,
@@ -64,7 +58,6 @@ export function computeScore(results) {
     };
   }
 
-  // Authoritative fail + domain warn
   if (results.authoritative?.status === 'fail' && results.domain?.status === 'warn') {
     results.domain = {
       ...results.domain,
@@ -73,7 +66,7 @@ export function computeScore(results) {
     };
   }
 
-  // downgrade SSL
+  // DV certs are trivially obtainable — downgrade to warn when impersonation is likely
   if (results.authoritative?.status === 'fail' && results.ssl?.status === 'pass') {
     const certType = results.ssl?.raw?.certType;
     if (certType === 'DV' || certType === 'Unknown' || certType === 'Unknown (no detail available)') {
@@ -85,7 +78,6 @@ export function computeScore(results) {
     }
   }
 
-  // 7. If TLD fails and SSL is only DV, downgrade SSL to warn
   if (results.tld?.status === 'fail' && results.ssl?.status === 'pass') {
     const certType = results.ssl?.raw?.certType;
     if (!certType || certType === 'DV' || certType === 'Unknown' || certType === 'Unknown (no detail available)') {
@@ -97,7 +89,6 @@ export function computeScore(results) {
     }
   }
 
-  // 8. DNS warn + TLD fail → DNS becomes fail
   if (results.dns?.status === 'warn' && results.tld?.status === 'fail') {
     results.dns = {
       ...results.dns,
@@ -106,19 +97,17 @@ export function computeScore(results) {
     };
   }
 
-  // ── Count warnings and failures ────────────────────────────────────
   let warnCount = 0;
   let failCount = 0;
   let skipCount = 0;
 
   for (const [key] of Object.entries(WEIGHTS)) {
     const status = results[key]?.status ?? 'skip';
-    if (status === 'warn') warnCount++;
+    if (status === 'warn')      warnCount++;
     else if (status === 'fail') failCount++;
     else if (status === 'skip') skipCount++;
   }
 
-  // ── Score Calculation ──────────────────────────────────────────────
   for (const [key, weight] of Object.entries(WEIGHTS)) {
     const result = results[key];
     const status = result?.status ?? 'skip';
@@ -127,16 +116,15 @@ export function computeScore(results) {
     if (status === 'pass') {
       points = weight;
     } else if (status === 'warn') {
-      // Warns get only 35% of weight (stricter)
       points = weight * 0.35;
     } else if (status === 'fail') {
       points = 0;
     } else {
-      // Skip — counts as 20% (slight negative bias for missing data)
+      // skipped modules contribute a small partial credit
       points = weight * 0.2;
     }
 
-    earned += points;
+    earned   += points;
     possible += weight;
 
     breakdown.push({
@@ -144,97 +132,56 @@ export function computeScore(results) {
       weight,
       status,
       points: Math.round(points * 10) / 10,
-      label: result?.label ?? key,
+      label:  result?.label ?? key,
       detail: result?.detail ?? '',
     });
   }
 
   let score = possible > 0 ? Math.round((earned / possible) * 100) : 0;
 
-  // ── Compounding Penalty ────────────────────────────────────────────
-  // Multiple warnings/failures should compound — a site with 3 warns
-  // and 1 fail is MUCH worse than one with just 1 warn.
+  // Accumulative penalties for multiple weak/failed modules
+  if (warnCount > 1) score -= (warnCount - 1) * 4;
+  if (failCount > 1) score -= (failCount - 1) * 6;
+  if (warnCount >= 2 && failCount >= 1) score -= 8;
+  if (skipCount >= 2) score -= skipCount * 3;
 
-  // Each warn after the 1st reduces score by 4 points
-  if (warnCount > 1) {
-    score -= (warnCount - 1) * 4;
-  }
-
-  // Each fail after the 1st reduces score by 6 points
-  if (failCount > 1) {
-    score -= (failCount - 1) * 6;
-  }
-
-  // Combined warn + fail penalty
-  if (warnCount >= 2 && failCount >= 1) {
-    score -= 8; // Extra penalty for mix of warns and fails
-  }
-
-  // Skipped modules are suspicious — reduce score slightly
-  if (skipCount >= 2) {
-    score -= skipCount * 3;
-  }
-
-  // ── TLD-based ceiling ──────────────────────────────────────────────
-  // If TLD is high-risk (fail), cap the maximum possible score
   if (results.tld?.status === 'fail') {
-    score = Math.min(score, 45); // Can't be above "Caution" with a risky TLD
+    score = Math.min(score, 45); // risky TLD can't land in "Trusted" or "Moderate"
   }
 
-  // ── Override Checks ────────────────────────────────────────────────
+  if (results.darkweb?.status === 'fail') score = Math.min(score, 10);
+  if (results.sb?.status === 'fail')      score = Math.min(score, 15);
 
-  // Dark web → immediate 10
-  if (results.darkweb?.status === 'fail') {
-    score = Math.min(score, 10);
-  }
-
-  // Safe Browsing threat → cap at 15
-  if (results.sb?.status === 'fail') {
-    score = Math.min(score, 15);
-  }
-
-  // Government spoofing → cap at 15
+  // Site claiming to be gov but not on a .gov TLD is near-certain fraud
   if (results.identity?.raw?.siteClaimsGov && !results.identity?.raw?.isVerifiedGov) {
     score = Math.min(score, 15);
   }
 
-  // ── IMPERSONATION PENALTY ──────────────────────────────────────────
   let impersonationDetected = false;
-  const impersonationData = results.authoritative?.raw?.impersonation;
+  const impersonationData   = results.authoritative?.raw?.impersonation;
 
   if (impersonationData && typeof impersonationData === 'object' && impersonationData.isImpersonation) {
     impersonationDetected = true;
     const confidence = impersonationData.confidence || 0;
 
-    if (confidence >= 70) {
-      score = Math.min(score, 10);
-    } else if (confidence >= 50) {
-      score = Math.min(score, 20);
-    } else if (confidence >= 30) {
-      score = Math.min(score, 35);
-    }
+    if (confidence >= 70)      score = Math.min(score, 10);
+    else if (confidence >= 50) score = Math.min(score, 20);
+    else if (confidence >= 30) score = Math.min(score, 35);
   }
 
-  // ── Floor at 0 ─────────────────────────────────────────────────────
   score = Math.max(0, Math.min(100, score));
 
-  // ── Band Classification ────────────────────────────────────────────
   let band, color;
   if (score >= 80) {
-    band = 'Trusted';
-    color = '#00e5ff';
+    band = 'Trusted';    color = '#00e5ff';
   } else if (score >= 60) {
-    band = 'Moderate';
-    color = '#4dd0e1';
+    band = 'Moderate';   color = '#4dd0e1';
   } else if (score >= 40) {
-    band = 'Caution';
-    color = '#ffb300';
+    band = 'Caution';    color = '#ffb300';
   } else if (score >= 20) {
-    band = 'Risky';
-    color = '#ff7043';
+    band = 'Risky';      color = '#ff7043';
   } else {
-    band = 'Dangerous';
-    color = '#ff3b3b';
+    band = 'Dangerous';  color = '#ff3b3b';
   }
 
   return { score, band, color, breakdown, impersonationDetected };

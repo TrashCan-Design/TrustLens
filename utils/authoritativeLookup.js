@@ -108,15 +108,11 @@ const BRAND_CANONICAL = {
   'irs':          'irs.gov',
 };
 
-// Known second-level domains for apex extraction
 const KNOWN_SLDS = new Set([
   'co', 'com', 'org', 'net', 'gov', 'edu', 'ac', 'mil',
   'or', 'ne', 'go', 'gob', 'nic', 'res', 'nhs', 'police', 'govt',
 ]);
 
-/**
- * Extract the registrable (apex) domain from a hostname.
- */
 function getApexDomain(hostname) {
   const parts = hostname.toLowerCase().split('.');
   if (parts.length >= 3 &&
@@ -127,9 +123,7 @@ function getApexDomain(hostname) {
   return parts.length >= 2 ? parts.slice(-2).join('.') : hostname;
 }
 
-/**
- * Query Google DoH.
- */
+// Uses Google DoH instead of the system resolver to avoid local DNS poisoning
 async function queryDNS(domain, type) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -148,9 +142,6 @@ async function queryDNS(domain, type) {
   }
 }
 
-/**
- * Fetch RDAP data for a domain.
- */
 async function fetchRDAP(domain) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -168,10 +159,6 @@ async function fetchRDAP(domain) {
   }
 }
 
-/**
- * Get a lightweight fingerprint of a domain for comparison.
- * Queries: A records, NS records, SOA, registration date.
- */
 async function getDomainFingerprint(domain) {
   const [aData, nsData, soaData, rdapData] = await Promise.all([
     queryDNS(domain, 'A'),
@@ -184,7 +171,7 @@ async function getDomainFingerprint(domain) {
   const nsRecords = nsData?.Answer?.filter(r => r.type === 2)?.map(r => r.data?.replace(/\.$/, '').toLowerCase()) ?? [];
   const soaRecord = soaData?.Answer?.find(r => r.type === 6);
 
-  // Extract SOA fields
+
   let soaPrimary = '', soaAdmin = '';
   if (soaRecord?.data) {
     const soaParts = soaRecord.data.split(/\s+/);
@@ -192,10 +179,8 @@ async function getDomainFingerprint(domain) {
     soaAdmin = soaParts[1]?.replace(/\.$/, '').toLowerCase() || '';
   }
 
-  // Extract RDAP info
   let registrantOrg = '', registrar = '', registrationDate = '';
   if (rdapData) {
-    // Registrant
     const registrant = rdapData.entities?.find(e => e.roles?.includes('registrant'));
     if (registrant) {
       const vcard = registrant.vcardArray?.[1] ?? [];
@@ -206,21 +191,19 @@ async function getDomainFingerprint(domain) {
         registrantOrg = fnEntry?.[3] || '';
       }
     }
-    // Registrar
     const registrarEntity = rdapData.entities?.find(e => e.roles?.includes('registrar'));
     if (registrarEntity) {
       const vcard = registrarEntity.vcardArray?.[1] ?? [];
       const fnEntry = vcard.find(item => item[0] === 'fn');
       registrar = fnEntry?.[3] || registrarEntity.handle || '';
     }
-    // Registration date
     const regEvent = rdapData.events?.find(e =>
       e.eventAction === 'registration' || e.eventAction === 'Registration'
     );
     registrationDate = regEvent?.eventDate || '';
   }
 
-  // Domain age in days
+
   let ageDays = -1;
   if (registrationDate) {
     ageDays = Math.floor((Date.now() - new Date(registrationDate).getTime()) / (1000 * 60 * 60 * 24));
@@ -241,21 +224,10 @@ async function getDomainFingerprint(domain) {
   };
 }
 
-/**
- * Compare two domain fingerprints and determine if current domain
- * is impersonating the canonical domain.
- *
- * Returns a comparison object with:
- *   - isImpersonation: boolean
- *   - confidence: 0-100 (how certain we are)
- *   - penalties: array of { reason, severity }
- *   - detail: human-readable explanation
- */
 function compareFingerprints(current, canonical, brandName) {
   const penalties = [];
-  let impersonationScore = 0; // higher = more likely impersonation
+  let impersonationScore = 0;
 
-  // 1. Different IPs (strong indicator — real site resolves differently)
   if (current.ips.length > 0 && canonical.ips.length > 0) {
     const sharedIPs = current.ips.filter(ip => canonical.ips.includes(ip));
     if (sharedIPs.length === 0) {
@@ -267,11 +239,9 @@ function compareFingerprints(current, canonical, brandName) {
     }
   }
 
-  // 2. Different nameservers
   if (current.nameservers.length > 0 && canonical.nameservers.length > 0) {
     const nsOverlap = current.nameservers.some(ns =>
       canonical.nameservers.some(cns => {
-        // Compare NS provider (e.g., both use cloudflare)
         const nsDomain = getApexDomain(ns);
         const cnsDomain = getApexDomain(cns);
         return nsDomain === cnsDomain;
@@ -286,7 +256,7 @@ function compareFingerprints(current, canonical, brandName) {
     }
   }
 
-  // 3. Different registrant organization
+
   if (current.registrantOrg && canonical.registrantOrg) {
     const normCurrent = current.registrantOrg.toLowerCase().replace(/[^a-z0-9]/g, '');
     const normCanonical = canonical.registrantOrg.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -305,7 +275,7 @@ function compareFingerprints(current, canonical, brandName) {
     });
   }
 
-  // 4. Different registrar
+
   if (current.registrar && canonical.registrar) {
     const normCurrReg = current.registrar.toLowerCase().replace(/[^a-z0-9]/g, '');
     const normCanReg = canonical.registrar.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -318,7 +288,7 @@ function compareFingerprints(current, canonical, brandName) {
     }
   }
 
-  // 5. SOA mismatch
+
   if (current.soaPrimary && canonical.soaPrimary) {
     const currentSOAApex = getApexDomain(current.soaPrimary);
     const canonicalSOAApex = getApexDomain(canonical.soaPrimary);
@@ -331,7 +301,7 @@ function compareFingerprints(current, canonical, brandName) {
     }
   }
 
-  // 6. Age comparison — real brands are OLD, spoofs are NEW
+
   if (canonical.ageDays > 365 && current.ageDays >= 0 && current.ageDays < 180) {
     impersonationScore += 20;
     penalties.push({
@@ -340,7 +310,7 @@ function compareFingerprints(current, canonical, brandName) {
     });
   }
 
-  // 7. Current domain doesn't resolve but canonical does
+
   if (!current.resolved && canonical.resolved) {
     impersonationScore += 15;
     penalties.push({
@@ -349,7 +319,6 @@ function compareFingerprints(current, canonical, brandName) {
     });
   }
 
-  // Cap at 100
   const confidence = Math.min(impersonationScore, 100);
   const isImpersonation = confidence >= 30;
 
@@ -376,32 +345,25 @@ function compareFingerprints(current, canonical, brandName) {
   };
 }
 
-/**
- * Detect which brand (if any) the current domain is trying to impersonate.
- * Returns the brand keyword and canonical domain, or null.
- */
 function detectBrandInDomain(hostname) {
   const apex = getApexDomain(hostname);
   const parts = hostname.toLowerCase().split('.');
   const apexRoot = apex.split('.')[0];
 
-  // Check each brand
+
   for (const [brand, canonical] of Object.entries(BRAND_CANONICAL)) {
     const canonicalApex = getApexDomain(canonical);
 
-    // Skip if this IS the canonical domain
+
     if (apex === canonicalApex) return null;
 
-    // Check if brand appears in any part of the hostname
     const found = parts.some(part => {
       if (part === brand) return true;
-      // Fuzzy: check if part contains the brand (e.g., "paypal-login" contains "paypal")
       if (part.includes(brand) && part !== apex.split('.')[0]) return true;
       return false;
     });
 
-    // Also check if the apex root itself is trying to look like the brand
-    // (typosquatting case: "paypa1.com" trying to be "paypal.com")
+
     const isSimilar = isTyposquat(apexRoot, brand);
 
     if (found || isSimilar) {
@@ -412,33 +374,28 @@ function detectBrandInDomain(hostname) {
   return null;
 }
 
-/**
- * Simple typosquatting detection between two strings.
- */
+// Levenshtein <= 2 or common homoglyph substitutions (0→o, 1→l, etc.)
 function isTyposquat(input, brand) {
   if (input === brand) return false;
   if (input.length < 3 || brand.length < 3) return false;
 
-  // Levenshtein distance ≤ 2
+
   const dist = levenshtein(input, brand);
   if (dist > 0 && dist <= 2 && input.length >= brand.length - 1) return true;
 
-  // Character substitution (0→o, 1→l, etc.)
+
   const deconfused = input
     .replace(/0/g, 'o').replace(/1/g, 'l').replace(/3/g, 'e')
     .replace(/4/g, 'a').replace(/5/g, 's').replace(/\$/g, 's')
     .replace(/@/g, 'a').replace(/!/g, 'i');
   if (deconfused === brand) return true;
 
-  // Hyphen removal
+
   if (input.replace(/-/g, '') === brand) return true;
 
   return false;
 }
 
-/**
- * Levenshtein edit distance.
- */
 function levenshtein(a, b) {
   const m = a.length, n = b.length;
   const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
@@ -454,17 +411,6 @@ function levenshtein(a, b) {
   return dp[m][n];
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// AUTHORITATIVE DNS VERIFICATION
-// ═══════════════════════════════════════════════════════════════════════
-
-/**
- * Perform authoritative DNS verification:
- * 1. Query SOA to identify the primary authoritative nameserver
- * 2. Query NS to get all authoritative nameservers
- * 3. Verify consistency between SOA and NS records
- * 4. Check if authoritative servers are from known providers
- */
 async function verifyAuthoritativeDNS(hostname) {
   const apex = getApexDomain(hostname);
 
@@ -487,21 +433,21 @@ async function verifyAuthoritativeDNS(hostname) {
   const issues = [];
   const verifications = [];
 
-  // 1. SOA exists
+
   if (soaPrimary) {
     verifications.push(`SOA primary: ${soaPrimary}`);
   } else {
     issues.push('No SOA record — cannot identify authoritative DNS server');
   }
 
-  // 2. NS records exist
+
   if (nsRecords.length > 0) {
     verifications.push(`${nsRecords.length} authoritative nameserver(s)`);
   } else {
     issues.push('No NS records — domain has no declared authoritative servers');
   }
 
-  // 3. SOA primary should match one of the NS records
+
   if (soaPrimary && nsRecords.length > 0) {
     const soaInNS = nsRecords.some(ns => ns === soaPrimary || ns.endsWith(soaPrimary) || soaPrimary.endsWith(ns));
     if (soaInNS) {
@@ -511,18 +457,16 @@ async function verifyAuthoritativeDNS(hostname) {
     }
   }
 
-  // 4. Multiple nameservers (redundancy)
   if (nsRecords.length === 1) {
     issues.push('Only 1 nameserver — no DNS redundancy');
   } else if (nsRecords.length >= 2) {
-    // Check if nameservers are in different domains (better resilience)
     const nsApexes = new Set(nsRecords.map(ns => getApexDomain(ns)));
     if (nsApexes.size >= 2) {
       verifications.push('Multiple NS providers (good redundancy)');
     }
   }
 
-  // 5. Known provider identification
+
   const knownProviders = {
     'cloudflare': 'Cloudflare', 'awsdns': 'AWS Route53', 'google': 'Google Cloud DNS',
     'azure': 'Azure DNS', 'digitalocean': 'DigitalOcean', 'godaddy': 'GoDaddy',
@@ -551,28 +495,18 @@ async function verifyAuthoritativeDNS(hostname) {
   };
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// MAIN EXPORT — Full Authoritative Lookup + Impersonation Check
-// ═══════════════════════════════════════════════════════════════════════
-
-/**
- * Main export — runs authoritative verification and impersonation detection.
- *
- * @param {string} hostname - current site's hostname
- * @returns {Promise<{ status, label, detail, raw }>}
- */
 export async function checkAuthoritative(hostname) {
   const apex = getApexDomain(hostname);
 
-  // Step 1: Authoritative DNS verification
+
   const authResult = await verifyAuthoritativeDNS(hostname);
 
-  // Step 2: Brand impersonation detection
+
   const brandMatch = detectBrandInDomain(hostname);
   let impersonation = null;
 
   if (brandMatch) {
-    // This domain contains a brand name — compare against the real one
+
     const [currentFP, canonicalFP] = await Promise.all([
       getDomainFingerprint(apex),
       getDomainFingerprint(brandMatch.canonical),
@@ -581,7 +515,7 @@ export async function checkAuthoritative(hostname) {
     impersonation = compareFingerprints(currentFP, canonicalFP, brandMatch.brand);
   }
 
-  // Step 3: Build result
+
   const issues = [...authResult.issues];
   const verifications = [...authResult.verifications];
 

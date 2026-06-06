@@ -1,10 +1,6 @@
 
-
-// Hhing risk TLDs 
 const HIGH_RISK_TLDS = new Set([
-  // They were free before so used to scam largely
   '.tk', '.ml', '.ga', '.cf', '.gq',
-  // according to owasp and other prequently used for pirracy site
   '.xyz', '.top', '.click', '.loan', '.club',
   '.work', '.download', '.stream', '.racing',
   '.gdn', '.win', '.buzz', '.rest', '.bid',
@@ -20,7 +16,6 @@ const HIGH_RISK_TLDS = new Set([
   '.cricket', '.science', '.review', '.party',
   '.trade', '.faith', '.accountant', '.date',
   '.men', '.webcam',
-  // Piracy
   '.rip', '.fit', '.lol', '.wtf', '.wang',
   '.ink', '.ren', '.kim', '.xin', '.ltd',
   '.guru', '.ninja', '.rocks', '.center', '.today',
@@ -32,9 +27,7 @@ const HIGH_RISK_TLDS = new Set([
   '.support', '.help', '.limo', '.ooo',
 ]);
 
-// TRUSTED TLDs
 const TRUSTED_TLDS = new Set([
-  // Legacy gTLDs
   '.com', '.org', '.net', '.edu', '.gov', '.mil', '.int',
   '.dev', '.app', '.page', '.new',
   '.bank', '.insurance', '.health', '.hospital',
@@ -42,7 +35,6 @@ const TRUSTED_TLDS = new Set([
   '.gov', '.mil',
   '.museum', '.aero', '.coop', '.post',
 
-  // Major countrycode 
   '.us', '.uk', '.ca', '.au', '.de', '.fr', '.it', '.es',
   '.nl', '.be', '.ch', '.at', '.se', '.no', '.dk', '.fi',
   '.jp', '.kr', '.cn', '.tw', '.hk', '.sg', '.nz',
@@ -55,7 +47,6 @@ const TRUSTED_TLDS = new Set([
   '.th', '.my', '.ph', '.vn', '.id',
   '.ru', '.tr',
 
-  // Two part country code TLDs
   '.co.uk', '.org.uk', '.ac.uk', '.gov.uk', '.nhs.uk', '.police.uk',
   '.co.in', '.org.in', '.net.in', '.gov.in', '.ac.in', '.res.in', '.nic.in',
   '.com.au', '.org.au', '.net.au', '.gov.au', '.edu.au',
@@ -85,18 +76,14 @@ const TRUSTED_TLDS = new Set([
   '.com.de', '.org.de',
   '.co.fr', '.com.fr',
 
-  //new gTLDs with good reputation
   '.io', '.ai', '.tech', '.cloud', '.digital',
   '.info', '.pro', '.biz',
   '.eu',
   '.asia',
 
-  // Brand TLDs 
   '.google', '.apple', '.amazon', '.microsoft', '.youtube',
 ]);
 
-//MODERATE RISK TLDs
-// they dont have strong repos but are fishy
 const MODERATE_RISK_TLDS = new Set([
   '.me', '.tv', '.ws', '.la',
   '.to', '.fm', '.am', '.ly',
@@ -111,8 +98,7 @@ const MODERATE_RISK_TLDS = new Set([
   '.one',
 ]);
 
-// Known Second Level Domains
-// Used for multi-part TLD extraction
+// Common SLDs used in ccTLD patterns like .co.uk
 const KNOWN_SLDS = new Set([
   'co', 'com', 'org', 'net', 'gov', 'edu', 'ac', 'mil',
   'or', 'ne', 'go', 'gob', 'nic', 'res', 'nhs', 'police',
@@ -121,25 +107,22 @@ const KNOWN_SLDS = new Set([
 
 
 function extractTLD(hostname) {
-  // Remove trailing dot if present 
-  const host = hostname.replace(/\.$/, '').toLowerCase();
+  const host  = hostname.replace(/\.$/, '').toLowerCase();
   const parts = host.split('.');
 
   if (parts.length < 2) return `.${host}`;
 
-  // Check for three part TLD first 
   if (parts.length >= 3) {
     const threePartSuffix = `.${parts.slice(-3).join('.')}`;
     if (TRUSTED_TLDS.has(threePartSuffix)) return threePartSuffix;
   }
 
-  // Check for known TLDs 
   const twoPartSuffix = `.${parts[parts.length - 2]}.${parts[parts.length - 1]}`;
   if (TRUSTED_TLDS.has(twoPartSuffix) || HIGH_RISK_TLDS.has(twoPartSuffix) || MODERATE_RISK_TLDS.has(twoPartSuffix)) {
     return twoPartSuffix;
   }
 
-  // Check if second last part is a known SLD with  country code
+  // Detect pattern like .co.uk where SLD is short and recognised
   if (KNOWN_SLDS.has(parts[parts.length - 2]) && parts[parts.length - 1].length <= 3) {
     return twoPartSuffix;
   }
@@ -154,22 +137,21 @@ export async function checkTLD(hostname) {
   let status, detail, riskLevel;
 
   if (HIGH_RISK_TLDS.has(tld)) {
-    status = 'fail';
+    status    = 'fail';
     riskLevel = 'high';
-    detail = `The TLD "${tld}" is associated with free/low-cost domains widely abused for phishing and malware. High risk.`;
+    detail    = `The TLD "${tld}" is associated with free/low-cost domains widely abused for phishing and malware. High risk.`;
   } else if (TRUSTED_TLDS.has(tld)) {
-    status = 'pass';
+    status    = 'pass';
     riskLevel = 'low';
-    detail = `"${tld}" is a well-established TLD with strong registrar oversight and low abuse rates.`;
+    detail    = `"${tld}" is a well-established TLD with strong registrar oversight and low abuse rates.`;
   } else if (MODERATE_RISK_TLDS.has(tld)) {
-    status = 'warn';
+    status    = 'warn';
     riskLevel = 'moderate';
-    detail = `"${tld}" has moderate risk — it's a legitimate TLD but sometimes used in suspicious domains. Exercise caution.`;
+    detail    = `"${tld}" has moderate risk — it's a legitimate TLD but sometimes used in suspicious domains. Exercise caution.`;
   } else {
-    // Unlisted — treat as caution, not fail
-    status = 'warn';
+    status    = 'warn';
     riskLevel = 'unknown';
-    detail = `"${tld}" is not in our database. Unlisted TLDs carry unknown risk — exercise caution.`;
+    detail    = `"${tld}" is not in our database. Unlisted TLDs carry unknown risk — exercise caution.`;
   }
 
   return {
