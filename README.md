@@ -12,7 +12,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Manifest-V3-4285F4?style=flat-square&logo=googlechrome&logoColor=white" alt="MV3"/>
   <img src="https://img.shields.io/badge/Version-1.1.0-00e5ff?style=flat-square" alt="Version"/>
-  <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License"/>
   <img src="https://img.shields.io/badge/Platform-Chrome%20%7C%20Edge-blue?style=flat-square" alt="Platform"/>
   <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen?style=flat-square" alt="PRs Welcome"/>
 </p>
