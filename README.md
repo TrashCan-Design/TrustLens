@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./trustlens_logo_1776356219500.png" width="120" alt="TrustLens Logo" />
+  <img src="./icons/icon48.png" width="120" alt="TrustLens Logo" />
 </p>
 
 <h1 align="center">TrustLens</h1>
