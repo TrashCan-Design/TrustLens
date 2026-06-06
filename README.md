@@ -262,6 +262,10 @@ This project is licensed under the **MIT License**. See [`LICENSE`](./LICENSE) f
 
 ---
 
-<p align="center">
-  <sub>Built with care for Research Methodology • 2026</sub>
-</p>
+<div align="center">
+
+**⭐ Star this repo if you find it helpful for your educational pursuits!**
+
+Made with ❤️ by [Jay](https://www.linkedin.com/in/jayshah-cybersec/)
+
+</div>
