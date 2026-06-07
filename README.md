@@ -246,12 +246,6 @@ If you discover a false positive or false negative on a real-world domain, openi
 
 ---
 
-## 📄 License
-
-This project is licensed under the **MIT License**. See [`LICENSE`](./LICENSE) for details.
-
----
-
 ## 🙏 Acknowledgments
 
 - [**Google Safe Browsing API**](https://developers.google.com/safe-browsing) — the threat intelligence backbone for the `sb` module
